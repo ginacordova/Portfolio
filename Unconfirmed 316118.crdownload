@@ -1,0 +1,264 @@
+
+# coding: utf-8
+
+# # Google Finance Stock Market Quotes
+# 
+# This data project will focus on exploratory data analysis of stock prices. It will examine bank stocks and see how they progressed throughout the [financial crisis](https://en.wikipedia.org/wiki/Financial_crisis_of_2007%E2%80%9308) all the way to early 2016.
+
+# ### The Imports
+
+# In[1]:
+
+
+from pandas_datareader import data, wb
+import pandas as pd
+import numpy as np
+import datetime
+get_ipython().magic('matplotlib inline')
+
+
+# ### The Data
+# 
+# We will get stock information for the following banks using pandas datareader:
+# *  Bank of America
+# * CitiGroup
+# * Goldman Sachs
+# * JPMorgan Chase
+# * Morgan Stanley
+# * Wells Fargo
+
+# In[2]:
+
+
+# Set the start and end dates
+start = datetime.datetime(2006, 1, 1)
+end = datetime.datetime(2016, 1, 1)
+
+
+# In[3]:
+
+
+# Bank of America
+BAC = data.DataReader("BAC", 'google', start, end)
+# CitiGroup
+C = data.DataReader("C", 'google', start, end)
+# Goldman Sachs
+GS = data.DataReader("GS", 'google', start, end)
+# JPMorgan Chase
+JPM = data.DataReader("JPM", 'google', start, end)
+# Morgan Stanley
+MS = data.DataReader("MS", 'google', start, end)
+# Wells Fargo
+WFC = data.DataReader("WFC", 'google', start, end)
+
+
+# In[4]:
+
+
+# Could also do this for a Panel Object
+df = data.DataReader(['BAC', 'C', 'GS', 'JPM', 'MS', 'WFC'],'google', start, end)
+
+
+# In[5]:
+
+
+# Create a list of the ticker symbol in alphabetical order
+tickers = ['BAC', 'C', 'GS', 'JPM', 'MS', 'WFC']
+
+
+# In[6]:
+
+
+# Use pd.concat to concatenate the bank dataframes together 
+# Set the keys argument equal to the tickers list 
+bank_stocks = pd.concat([BAC, C, GS, JPM, MS, WFC],axis=1,keys=tickers)
+
+
+# In[7]:
+
+
+# Set the column name levels
+bank_stocks.columns.names = ['Bank Ticker','Stock Info']
+
+
+# In[8]:
+
+
+bank_stocks.head()
+
+
+# In[9]:
+
+
+# Determines the max Close price for each bank's stock for the time period specified
+bank_stocks.xs(key='Close',axis=1,level='Stock Info').max()
+
+
+# ** Create a new empty DataFrame called returns. This dataframe will contain the returns for each bank's stock. returns are typically defined by:**
+# 
+# $$r_t = \frac{p_t - p_{t-1}}{p_{t-1}} = \frac{p_t}{p_{t-1}} - 1$$
+
+# In[3]:
+
+
+# Creates a new empty dataframe called returns
+returns = pd.DataFrame()
+
+
+# In[11]:
+
+
+# pct_change() method is used on the 'Close' column to create a column
+# For loop goes through each bank stock ticker and creates a column in the returns dataframe
+for tick in tickers:
+    returns[tick+' Return'] = bank_stocks[tick]['Close'].pct_change()
+returns.head()
+
+
+# ## Pairplot using seaborn
+
+# In[2]:
+
+
+import seaborn as sns
+sns.pairplot(returns[1:])
+
+
+# In[14]:
+
+
+# Worst Drop (4 of them on Inauguration day)
+returns.idxmin()
+
+
+# In[15]:
+
+
+# Best Single Day Gain
+# citigroup stock split in May 2011, but also JPM day after inauguration.
+returns.idxmax()
+
+
+# In[16]:
+
+
+returns.std() # Citigroup riskiest
+
+
+# In[17]:
+
+
+returns.ix['2015-01-01':'2015-12-31'].std() # Very similar risk profiles, but Morgan Stanley or Bank of America
+
+
+# ## Distplot using seaborn
+
+# In[18]:
+
+
+sns.distplot(returns.ix['2015-01-01':'2015-12-31']['MS Return'],color='green',bins=100)
+
+
+# ** Create a distplot using seaborn of the 2008 returns for CitiGroup **
+
+# In[19]:
+
+
+sns.distplot(returns.ix['2008-01-01':'2008-12-31']['C Return'],color='red',bins=100)
+
+
+# # More Data Visualization
+# 
+# ### Imports
+
+# In[20]:
+
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+sns.set_style('whitegrid')
+get_ipython().magic('matplotlib inline')
+
+# Optional Plotly Method Imports
+import plotly
+import cufflinks as cf
+cf.go_offline()
+
+
+# In[21]:
+
+
+# Line plot
+for tick in tickers:
+    bank_stocks[tick]['Close'].plot(figsize=(12,4),label=tick)
+plt.legend()
+
+
+# In[22]:
+
+
+bank_stocks.xs(key='Close',axis=1,level='Stock Info').plot()
+
+
+# In[23]:
+
+
+# plotly
+bank_stocks.xs(key='Close',axis=1,level='Stock Info').iplot()
+
+
+# In[24]:
+
+
+# Moving averages
+plt.figure(figsize=(12,6))
+BAC['Close'].ix['2008-01-01':'2009-01-01'].rolling(window=30).mean().plot(label='30 Day Avg')
+BAC['Close'].ix['2008-01-01':'2009-01-01'].plot(label='BAC CLOSE')
+plt.legend()
+
+
+# In[25]:
+
+
+# Heatmap using seaborn
+sns.heatmap(bank_stocks.xs(key='Close',axis=1,level='Stock Info').corr(),annot=True)
+
+
+# In[26]:
+
+
+# Clustermap using seaborn
+sns.clustermap(bank_stocks.xs(key='Close',axis=1,level='Stock Info').corr(),annot=True)
+
+
+# In[27]:
+
+
+close_corr = bank_stocks.xs(key='Close',axis=1,level='Stock Info').corr()
+close_corr.iplot(kind='heatmap',colorscale='rdylbu')
+
+
+# ## Cufflinks library
+
+# In[28]:
+
+
+# Candle plot using .iplot()
+BAC[['Open', 'High', 'Low', 'Close']].ix['2015-01-01':'2016-01-01'].iplot(kind='candle')
+
+
+# In[29]:
+
+
+# Moving averages plot using .ta_plot()
+MS['Close'].ix['2015-01-01':'2016-01-01'].ta_plot(study='sma',periods=[13,21,55],title='Simple Moving Averages')
+
+
+# In[30]:
+
+
+# Bollinger bank plot using .ta_plot()
+BAC['Close'].ix['2015-01-01':'2016-01-01'].ta_plot(study='boll')
+
+
+# ## Thank you!
