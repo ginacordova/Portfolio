@@ -1,2 +1,0 @@
-%timeit function_name(argument)
-# Above is a built in command in Jupyter notebook that returns the time a function takes to run
